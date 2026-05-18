@@ -23,7 +23,8 @@ eggs/
 parts/
 sdist/
 var/
-wheels/
+wheels/*
+!wheels/scenepic-*.whl
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/

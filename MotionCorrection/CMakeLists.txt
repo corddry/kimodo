@@ -21,7 +21,9 @@ if(NOT pybind11_FOUND)
 endif()
 
 # Find or fetch Eigen
-find_package(Eigen3 3.3 CONFIG QUIET)
+# NO_CMAKE_PACKAGE_REGISTRY: ignore stale ~/.cmake/packages entries left behind by
+# other FetchContent-based builds (e.g. scenepic) that point at deleted dirs.
+find_package(Eigen3 3.3 CONFIG QUIET NO_CMAKE_PACKAGE_REGISTRY)
 if(NOT Eigen3_FOUND)
     message(STATUS "Eigen3 not found, fetching from GitLab...")
     include(FetchContent)
