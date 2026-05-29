@@ -30,6 +30,13 @@ dependencies = [
   "pillow>=9.0",
   "av>=16.1.0",
   "bvhio",
+  # Spark Linux/aarch64 runtime dependencies. Keep these managed so `uv sync`/`uv run`
+  # does not remove packages needed by the shared DGX Spark Kimodo install.
+  "embreex==4.4.0; platform_machine == 'aarch64' and sys_platform == 'linux' and python_version == '3.10'",
+  "viser @ git+https://github.com/nv-tlabs/kimodo-viser.git ; platform_machine == 'aarch64' and sys_platform == 'linux'",
+  "py-soma-x @ git+https://github.com/NVlabs/SOMA-X.git ; platform_machine == 'aarch64' and sys_platform == 'linux'",
+  "warp-lang; platform_machine == 'aarch64' and sys_platform == 'linux'",
+  "cholespy; platform_machine == 'aarch64' and sys_platform == 'linux'",
 ]
 
 [project.optional-dependencies]
@@ -43,14 +50,25 @@ all = [
   "viser @ git+https://github.com/nv-tlabs/kimodo-viser.git",
   "py-soma-x @ git+https://github.com/NVlabs/SOMA-X.git"
 ]
+spark = [
+  "embreex==4.4.0",
+  "viser @ git+https://github.com/nv-tlabs/kimodo-viser.git",
+  "py-soma-x @ git+https://github.com/NVlabs/SOMA-X.git",
+  "warp-lang",
+  "cholespy",
+]
 
 [project.scripts]
 kimodo_gen = "kimodo.scripts.generate:main"
 kimodo_demo = "kimodo.demo:main"
 kimodo_textencoder = "kimodo.scripts.run_text_encoder_server:main"
 kimodo_convert = "kimodo.scripts.motion_convert:main"
+kimodo_spark_post_sync = "kimodo.scripts.spark_post_sync:main"
 
 [tool.uv.sources]
+embreex = [
+  { path = "wheels/embreex-4.4.0-cp310-cp310-linux_aarch64.whl", marker = "platform_machine == 'aarch64' and sys_platform == 'linux' and python_version == '3.10'" },
+]
 scenepic = [
   { path = "wheels/scenepic-1.1.2-cp310-cp310-linux_aarch64.whl", marker = "platform_machine == 'aarch64' and sys_platform == 'linux' and python_version == '3.10'" },
 ]

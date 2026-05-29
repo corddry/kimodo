@@ -25,6 +25,7 @@ sdist/
 var/
 wheels/*
 !wheels/scenepic-*.whl
+!wheels/embreex-*.whl
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
