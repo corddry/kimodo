@@ -305,13 +305,17 @@ class FullBodyConstraintSet:
         """Build a FullBodyConstraintSet from a dict (e.g. loaded from JSON)."""
         frame_indices = torch.tensor(dico["frame_indices"])
         device = skeleton.device if hasattr(skeleton, "device") else "cpu"
-        local_rot = torch.tensor(dico["local_joints_rot"], device=device)
-        local_rot_mats = axis_angle_to_matrix(local_rot)
-        local_rot_mats = _convert_constraint_local_rots_to_skeleton(local_rot_mats, skeleton)
-        global_joints_rots, global_joints_positions, _ = skeleton.fk(
-            local_rot_mats,
-            torch.tensor(dico["root_positions"], device=device),
-        )
+        if "global_joints_positions" in dico and "global_joints_rots" in dico:
+            global_joints_positions = torch.tensor(dico["global_joints_positions"], device=device)
+            global_joints_rots = torch.tensor(dico["global_joints_rots"], device=device)
+        else:
+            local_rot = torch.tensor(dico["local_joints_rot"], device=device)
+            local_rot_mats = axis_angle_to_matrix(local_rot)
+            local_rot_mats = _convert_constraint_local_rots_to_skeleton(local_rot_mats, skeleton)
+            global_joints_rots, global_joints_positions, _ = skeleton.fk(
+                local_rot_mats,
+                torch.tensor(dico["root_positions"], device=device),
+            )
         smooth_root_2d = None
         if "smooth_root_2d" in dico:
             smooth_root_2d = torch.tensor(dico["smooth_root_2d"], device=device)
@@ -487,13 +491,17 @@ class EndEffectorConstraintSet:
         """Build an EndEffectorConstraintSet from a dict (e.g. loaded from JSON)."""
         frame_indices = torch.tensor(dico["frame_indices"])
         device = skeleton.device if hasattr(skeleton, "device") else "cpu"
-        local_rot = torch.tensor(dico["local_joints_rot"], device=device)
-        local_rot_mats = axis_angle_to_matrix(local_rot)
-        local_rot_mats = _convert_constraint_local_rots_to_skeleton(local_rot_mats, skeleton)
-        global_joints_rots, global_joints_positions, _ = skeleton.fk(
-            local_rot_mats,
-            torch.tensor(dico["root_positions"], device=device),
-        )
+        if "global_joints_positions" in dico and "global_joints_rots" in dico:
+            global_joints_positions = torch.tensor(dico["global_joints_positions"], device=device)
+            global_joints_rots = torch.tensor(dico["global_joints_rots"], device=device)
+        else:
+            local_rot = torch.tensor(dico["local_joints_rot"], device=device)
+            local_rot_mats = axis_angle_to_matrix(local_rot)
+            local_rot_mats = _convert_constraint_local_rots_to_skeleton(local_rot_mats, skeleton)
+            global_joints_rots, global_joints_positions, _ = skeleton.fk(
+                local_rot_mats,
+                torch.tensor(dico["root_positions"], device=device),
+            )
         smooth_root_2d = None
         if "smooth_root_2d" in dico:
             smooth_root_2d = torch.tensor(dico["smooth_root_2d"], device=device)

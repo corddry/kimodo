@@ -13,6 +13,7 @@ from __future__ import annotations
 import math
 import json
 import time
+from datetime import datetime, timezone
 from fractions import Fraction
 from pathlib import Path
 from typing import Any
@@ -1082,6 +1083,20 @@ def _write_h264_mp4(
     }
 
 
+def _write_render_progress(progress_path: str | Path | None, payload: dict[str, Any]) -> None:
+    if progress_path is None:
+        return
+    path = Path(progress_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        **payload,
+        "updated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
+    }
+    tmp_path = path.with_name(f"{path.name}.tmp")
+    tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp_path.replace(path)
+
+
 def render_session_video(
     demo: Any,
     *,
@@ -1103,6 +1118,7 @@ def render_session_video(
     camera_orientation: str = "trajectory",
     camera_fov_degrees: float = 45.0,
     camera_min_displacement_m: float = 0.35,
+    progress_path: str | Path | None = None,
 ) -> dict[str, Any]:
     """Render the active Kimodo session to MP4 using Viser's native client capture."""
 
@@ -1123,6 +1139,8 @@ def render_session_video(
     output = Path(output_path)
     video_paths: list[str] = []
     encodes: list[dict[str, Any]] = []
+    total_captures = len(selected_views) * len(frame_indices)
+    completed_captures = 0
     original_frame = int(session.frame_idx)
     non_current_views = [view for view in selected_views if view != "current"]
     if camera_mode == "static_fit":
@@ -1151,22 +1169,64 @@ def render_session_video(
     plan_path = output.parent / "camera_plan.json"
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(json.dumps(camera_plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    _write_render_progress(
+        progress_path,
+        {
+            "status": "running",
+            "progress": 0.0,
+            "message": "rendering",
+            "completed_frames": 0,
+            "total_frames": total_captures,
+            "views": selected_views,
+        },
+    )
 
     try:
         session.client.timeline.disable_constraints()
-        for view in selected_views:
+        for view_index, view in enumerate(selected_views):
             if view != "current":
                 _apply_camera_dict(session.client, camera_plan["views"][view]["camera"])
 
             def _frames_for_view():
+                nonlocal completed_captures
                 for frame_idx in frame_indices:
+                    _write_render_progress(
+                        progress_path,
+                        {
+                            "status": "running",
+                            "progress": completed_captures / total_captures if total_captures else 0.0,
+                            "message": f"rendering {view} frame {completed_captures + 1}/{total_captures}",
+                            "view": view,
+                            "view_index": view_index,
+                            "frame_index": int(frame_idx),
+                            "completed_frames": completed_captures,
+                            "total_frames": total_captures,
+                            "views": selected_views,
+                        },
+                    )
                     demo.set_frame(session.client.client_id, frame_idx, update_timeline=True)
-                    yield session.client.get_render(
+                    image = session.client.get_render(
                         height=height,
                         width=width,
                         transport_format=transport_format,  # type: ignore[arg-type]
                         timeout_s=render_timeout_s,
                     )
+                    completed_captures += 1
+                    _write_render_progress(
+                        progress_path,
+                        {
+                            "status": "running",
+                            "progress": completed_captures / total_captures if total_captures else 0.0,
+                            "message": f"rendered {view} frame {completed_captures}/{total_captures}",
+                            "view": view,
+                            "view_index": view_index,
+                            "frame_index": int(frame_idx),
+                            "completed_frames": completed_captures,
+                            "total_frames": total_captures,
+                            "views": selected_views,
+                        },
+                    )
+                    yield image
 
             target = _video_path_for_view(output, view, multiple_views=len(selected_views) > 1)
             encodes.append(
@@ -1187,6 +1247,19 @@ def render_session_video(
     finally:
         demo.set_frame(session.client.client_id, original_frame)
         session.client.timeline.enable_constraints()
+
+    _write_render_progress(
+        progress_path,
+        {
+            "status": "completed",
+            "progress": 1.0,
+            "message": "completed",
+            "completed_frames": completed_captures,
+            "total_frames": total_captures,
+            "views": selected_views,
+            "video_paths": video_paths,
+        },
+    )
 
     return {
         "video_paths": video_paths,
