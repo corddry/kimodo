@@ -167,9 +167,15 @@ class SkeletonBase(torch.nn.Module):
         pos_joint_names = []
         # loop through each EE joint group to constrain in the current keyframe
         for jname in joint_names:
-            idx = base_ee.index(jname)
-            rot_joint_names += base_rot_names[idx]
-            pos_joint_names += base_pos_names[idx]
+            if jname in base_ee:
+                idx = base_ee.index(jname)
+                rot_joint_names += base_rot_names[idx]
+                pos_joint_names += base_pos_names[idx]
+            elif jname in self.bone_index:
+                rot_joint_names.append(jname)
+                pos_joint_names.append(jname)
+            else:
+                raise ValueError(f"Unknown joint name: {jname}")
         return rot_joint_names, pos_joint_names
 
     def expand_joint_names_batched(self, joint_names):
@@ -211,9 +217,15 @@ class SkeletonBase(torch.nn.Module):
             key_pos_names = []
             # loop through each EE joint group to constrain in the current keyframe
             for jname in key_joint_names:
-                idx = base_ee.index(jname)
-                key_rot_names += base_rot_names[idx]
-                key_pos_names += base_pos_names[idx]
+                if jname in base_ee:
+                    idx = base_ee.index(jname)
+                    key_rot_names += base_rot_names[idx]
+                    key_pos_names += base_pos_names[idx]
+                elif jname in self.bone_index:
+                    key_rot_names.append(jname)
+                    key_pos_names.append(jname)
+                else:
+                    raise ValueError(f"Unknown joint name: {jname}")
             rot_joint_names.append(key_rot_names)
             pos_joint_names.append(key_pos_names)
         return rot_joint_names, pos_joint_names

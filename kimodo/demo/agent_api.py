@@ -1097,6 +1097,67 @@ def _write_render_progress(progress_path: str | Path | None, payload: dict[str, 
     tmp_path.replace(path)
 
 
+def _weapon_overlay_config(weapon_overlay: dict[str, Any] | None) -> dict[str, Any] | None:
+    if weapon_overlay is None:
+        return None
+    config = dict(weapon_overlay)
+    config.setdefault("enabled", True)
+    if not config["enabled"]:
+        return None
+    config.setdefault("lead_hand", "RightHand")
+    config.setdefault("trail_hand", "LeftHand" if config["lead_hand"] == "RightHand" else "RightHand")
+    config.setdefault("blade_length_m", 1.45)
+    config.setdefault("pommel_length_m", 0.18)
+    config.setdefault("line_width", 5.0)
+    config.setdefault("blade_color", [55, 61, 70])
+    config.setdefault("hilt_color", [130, 91, 45])
+    config.setdefault("pommel_color", [90, 65, 40])
+    config.setdefault("fallback_direction", [0.0, 0.0, 1.0])
+    return config
+
+
+def _weapon_overlay_points(motion: Any, skeleton: Any, frame_idx: int, config: dict[str, Any]) -> np.ndarray:
+    joints = motion.joints_pos[int(frame_idx)].detach().cpu().numpy()
+    lead_name = str(config["lead_hand"])
+    trail_name = str(config["trail_hand"])
+    if lead_name not in skeleton.bone_index:
+        raise ValueError(f"Unknown weapon overlay lead_hand: {lead_name}")
+    if trail_name not in skeleton.bone_index:
+        raise ValueError(f"Unknown weapon overlay trail_hand: {trail_name}")
+
+    lead = joints[skeleton.bone_index[lead_name]]
+    trail = joints[skeleton.bone_index[trail_name]]
+    axis = lead - trail
+    axis_norm = float(np.linalg.norm(axis))
+    if axis_norm <= 1e-6 or not np.isfinite(axis_norm):
+        axis = _normalize_vector(config.get("fallback_direction"), WORLD_FORWARD)
+    else:
+        axis = axis / axis_norm
+
+    blade_tip = lead + axis * float(config["blade_length_m"])
+    pommel_tip = trail - axis * float(config["pommel_length_m"])
+    return np.asarray(
+        [
+            [trail, lead],
+            [lead, blade_tip],
+            [trail, pommel_tip],
+        ],
+        dtype=np.float32,
+    )
+
+
+def _weapon_overlay_colors(config: dict[str, Any]) -> np.ndarray:
+    colors = np.asarray(
+        [
+            [config["hilt_color"], config["hilt_color"]],
+            [config["blade_color"], config["blade_color"]],
+            [config["pommel_color"], config["pommel_color"]],
+        ],
+        dtype=np.uint8,
+    )
+    return colors
+
+
 def render_session_video(
     demo: Any,
     *,
@@ -1119,6 +1180,7 @@ def render_session_video(
     camera_fov_degrees: float = 45.0,
     camera_min_displacement_m: float = 0.35,
     progress_path: str | Path | None = None,
+    weapon_overlay: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Render the active Kimodo session to MP4 using Viser's native client capture."""
 
@@ -1169,6 +1231,16 @@ def render_session_video(
     plan_path = output.parent / "camera_plan.json"
     plan_path.parent.mkdir(parents=True, exist_ok=True)
     plan_path.write_text(json.dumps(camera_plan, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    overlay_config = _weapon_overlay_config(weapon_overlay)
+    overlay_handle = None
+    overlay_name = "/agent_review/weapon_proxy"
+    if overlay_config is not None:
+        overlay_handle = session.client.scene.add_line_segments(
+            overlay_name,
+            points=np.zeros((3, 2, 3), dtype=np.float32),
+            colors=_weapon_overlay_colors(overlay_config),
+            line_width=float(overlay_config["line_width"]),
+        )
     _write_render_progress(
         progress_path,
         {
@@ -1205,6 +1277,8 @@ def render_session_video(
                         },
                     )
                     demo.set_frame(session.client.client_id, frame_idx, update_timeline=True)
+                    if overlay_handle is not None and overlay_config is not None:
+                        overlay_handle.points = _weapon_overlay_points(motion, session.skeleton, frame_idx, overlay_config)
                     image = session.client.get_render(
                         height=height,
                         width=width,
@@ -1245,6 +1319,8 @@ def render_session_video(
             )
             video_paths.append(str(target))
     finally:
+        if overlay_handle is not None:
+            session.client.scene.remove_by_name(overlay_name)
         demo.set_frame(session.client.client_id, original_frame)
         session.client.timeline.enable_constraints()
 
@@ -1276,6 +1352,7 @@ def render_session_video(
         "encodes": encodes,
         "camera_plan": camera_plan,
         "camera_plan_path": str(plan_path),
+        "weapon_overlay": overlay_config,
     }
 
 
