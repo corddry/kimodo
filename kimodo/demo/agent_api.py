@@ -1011,7 +1011,9 @@ def capture_session_frame(
 
 def _video_path_for_view(output_path: Path, view: str, *, multiple_views: bool) -> Path:
     path = _coerce_output_path(output_path, ext=".mp4")
-    if not multiple_views:
+    if view == "current" and not multiple_views:
+        return path
+    if path.stem.endswith(f"_{view}"):
         return path
     return path.with_name(f"{path.stem}_{view}{path.suffix}")
 
