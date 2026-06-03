@@ -592,6 +592,71 @@ class Demo:
             motion.set_frame(frame_idx)
         self._apply_constraint_overlay_visibility(session)
 
+    def wait_for_agent_client(self, client_id: int | None = None, timeout_s: float = 60.0):
+        from . import agent_api
+
+        return agent_api.wait_for_client(self, client_id=client_id, timeout_s=timeout_s)
+
+    def get_agent_session_state(self, client_id: int | None = None):
+        from . import agent_api
+
+        return agent_api.get_session_state(self, client_id=client_id)
+
+    def agent_generate(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.generate_session_motion(self, client_id=client_id, **kwargs)
+
+    def agent_export_motion(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.export_session_motion(self, client_id=client_id, **kwargs)
+
+    def agent_switch_model(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.switch_session_model(self, client_id=client_id, **kwargs)
+
+    def agent_load_motion(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.load_session_motion(self, client_id=client_id, **kwargs)
+
+    def agent_save_constraints(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.save_session_constraints(self, client_id=client_id, **kwargs)
+
+    def agent_load_constraints(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.load_session_constraints(self, client_id=client_id, **kwargs)
+
+    def agent_set_frame(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.set_session_frame(self, client_id=client_id, **kwargs)
+
+    def agent_set_camera(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.set_session_camera(self, client_id=client_id, **kwargs)
+
+    def agent_set_visual_options(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.set_session_visual_options(self, client_id=client_id, **kwargs)
+
+    def agent_capture_frame(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.capture_session_frame(self, client_id=client_id, **kwargs)
+
+    def agent_render_video(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.render_session_video(self, client_id=client_id, **kwargs)
+
     def run(self) -> None:
         update_counter = 0
         cuda_check_interval = 300
