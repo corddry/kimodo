@@ -222,6 +222,10 @@ class Demo:
 
     def _apply_constraint_overlay_visibility(self, session: ClientSession) -> None:
         """Apply show-all vs show-only-current-frame to constraint overlays."""
+        if not session.show_constraint_overlays:
+            for constraint in session.constraints.values():
+                constraint.set_overlay_visibility(-1)
+            return
         only_frame = session.frame_idx if session.show_only_current_constraint else None
         for constraint in session.constraints.values():
             constraint.set_overlay_visibility(only_frame)

@@ -941,6 +941,10 @@ def set_session_visual_options(
     if "show_constraint_tracks" in options:
         demo.set_constraint_tracks_visible(session, bool(options["show_constraint_tracks"]))
 
+    if "show_constraint_overlays" in options:
+        session.show_constraint_overlays = bool(options["show_constraint_overlays"])
+        demo._apply_constraint_overlay_visibility(session)
+
     if "show_only_current_constraint" in options:
         session.show_only_current_constraint = bool(options["show_only_current_constraint"])
         demo._apply_constraint_overlay_visibility(session)
@@ -1181,6 +1185,7 @@ def render_session_video(
     camera_min_displacement_m: float = 0.35,
     progress_path: str | Path | None = None,
     weapon_overlay: dict[str, Any] | None = None,
+    show_constraint_overlays: bool = False,
 ) -> dict[str, Any]:
     """Render the active Kimodo session to MP4 using Viser's native client capture."""
 
@@ -1234,6 +1239,7 @@ def render_session_video(
     overlay_config = _weapon_overlay_config(weapon_overlay)
     overlay_handle = None
     overlay_name = "/agent_review/weapon_proxy"
+    original_show_constraint_overlays = bool(session.show_constraint_overlays)
     if overlay_config is not None:
         overlay_handle = session.client.scene.add_line_segments(
             overlay_name,
@@ -1255,6 +1261,8 @@ def render_session_video(
 
     try:
         session.client.timeline.disable_constraints()
+        session.show_constraint_overlays = bool(show_constraint_overlays)
+        demo._apply_constraint_overlay_visibility(session)
         for view_index, view in enumerate(selected_views):
             if view != "current":
                 _apply_camera_dict(session.client, camera_plan["views"][view]["camera"])
@@ -1322,6 +1330,8 @@ def render_session_video(
         if overlay_handle is not None:
             session.client.scene.remove_by_name(overlay_name)
         demo.set_frame(session.client.client_id, original_frame)
+        session.show_constraint_overlays = original_show_constraint_overlays
+        demo._apply_constraint_overlay_visibility(session)
         session.client.timeline.enable_constraints()
 
     _write_render_progress(
@@ -1353,6 +1363,7 @@ def render_session_video(
         "camera_plan": camera_plan,
         "camera_plan_path": str(plan_path),
         "weapon_overlay": overlay_config,
+        "show_constraint_overlays": bool(show_constraint_overlays),
     }
 
 
