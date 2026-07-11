@@ -345,10 +345,24 @@ def wait_for_client(
     raise TimeoutError(f"No Kimodo client connected within {timeout_s:.1f}s.")
 
 
-def get_primary_motion(session: ClientSession):
+def get_session_motion(session: ClientSession, sample_index: int = 0) -> tuple[str, Any]:
+    """Return ``(motion_key, motion)`` for one of the session's loaded motions.
+
+    Generation inserts one motion per sample (``character0..N-1``) in sample
+    order, so ``sample_index`` addresses samples by their generation index.
+    """
+
     if not session.motions:
         raise RuntimeError("Session has no loaded motion.")
-    return list(session.motions.values())[0]
+    motions = list(session.motions.items())
+    index = int(sample_index)
+    if not 0 <= index < len(motions):
+        raise IndexError(f"sample_index {index} is out of range; session has {len(motions)} loaded motion(s).")
+    return motions[index]
+
+
+def get_primary_motion(session: ClientSession):
+    return get_session_motion(session)[1]
 
 
 def motion_to_numpy_dict(motion) -> dict[str, np.ndarray]:
@@ -396,11 +410,12 @@ def export_session_motion(
     output_path: str | Path,
     fmt: str = "NPZ",
     standard_tpose: bool = False,
+    sample_index: int = 0,
 ) -> dict[str, Any]:
-    """Export the active motion from a live Kimodo session."""
+    """Export one motion from a live Kimodo session, ``sample_index`` of N."""
 
     session = get_session(demo, client_id)
-    motion = get_primary_motion(session)
+    motion_key, motion = get_session_motion(session, sample_index)
     fmt = fmt.upper()
 
     if fmt == "BVH":
@@ -432,6 +447,9 @@ def export_session_motion(
         "format": fmt,
         "frame_count": int(motion.joints_pos.shape[0]),
         "fps": float(session.model_fps),
+        "sample_index": int(sample_index),
+        "motion_key": motion_key,
+        "motion_count": len(session.motions),
     }
 
 
