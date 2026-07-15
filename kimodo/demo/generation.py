@@ -28,7 +28,6 @@ def compute_model_constraints_lst(
     device: str,
 ):
     """Compute the lst of constraints for the model based on the constraints in viser."""
-    assert len(session.motions) == 1, "Only one motion allowed for constrained generation"
     if not session.constraints:
         return []
 
@@ -126,6 +125,9 @@ def compute_model_constraints_lst(
                 )
         else:
             raise ValueError(f"Unsupported constraint type: {constraint.display_name}")
+    # Empty tracks contribute nothing; only generation that actually applies
+    # constraints requires the single anchor motion they were authored against.
+    assert not model_constraints or len(session.motions) == 1, "Only one motion allowed for constrained generation"
     return model_constraints
 
 
