@@ -365,6 +365,20 @@ def get_primary_motion(session: ClientSession):
     return get_session_motion(session)[1]
 
 
+def _motion_display_offset(motion) -> np.ndarray:
+    """Scene-placement translation baked into a session motion's display arrays.
+
+    Multi-sample generation spreads characters along x for side-by-side review;
+    exports must subtract this offset so every sample lands in the canonical
+    constraint/reference frame.
+    """
+
+    offset = getattr(motion, "display_offset", None)
+    if offset is None:
+        return np.zeros(3, dtype=np.float64)
+    return _as_numpy(offset).astype(np.float64).reshape(3)
+
+
 def motion_to_numpy_dict(motion) -> dict[str, np.ndarray]:
     """Convert the primary Kimodo in-memory motion to export arrays."""
 
@@ -378,6 +392,10 @@ def motion_to_numpy_dict(motion) -> dict[str, np.ndarray]:
         raise ValueError(f"Expected unbatched joints_rot with shape [T, J, 3, 3], got {joints_rot.shape}")
     if joints_local_rot.ndim != 4:
         raise ValueError(f"Expected unbatched joints_local_rot with shape [T, J, 3, 3], got {joints_local_rot.shape}")
+
+    display_offset = _motion_display_offset(motion)
+    if np.any(display_offset != 0):
+        joints_pos = joints_pos - display_offset.astype(joints_pos.dtype)
 
     motion_data = {
         "posed_joints": joints_pos,
@@ -421,10 +439,16 @@ def export_session_motion(
     if fmt == "BVH":
         path = _coerce_output_path(output_path, ext=".bvh")
         path.parent.mkdir(parents=True, exist_ok=True)
+        root_positions = motion.joints_pos[:, session.skeleton.root_idx, :]
+        display_offset = _motion_display_offset(motion)
+        if np.any(display_offset != 0):
+            root_positions = root_positions - torch.as_tensor(
+                display_offset, dtype=root_positions.dtype, device=root_positions.device
+            )
         save_motion_bvh(
             path,
             motion.joints_local_rot,
-            motion.joints_pos[:, session.skeleton.root_idx, :],
+            root_positions,
             skeleton=session.skeleton,
             fps=float(session.model_fps),
             standard_tpose=standard_tpose,

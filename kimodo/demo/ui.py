@@ -2883,9 +2883,13 @@ def create_gui(
                                     "joints_rot": motion.joints_rot,
                                     "foot_contacts": motion.foot_contacts,
                                 }
-                                root_x_offset = motion.joints_pos[0, session.skeleton.root_idx, 0]
+                                # Undo the exact multi-sample display spread rather than
+                                # recentering on the frame-0 root x, so committed motions
+                                # stay aligned with the constraint/reference frame.
                                 new_joints_pos = motion.joints_pos.clone()
-                                new_joints_pos[..., 0] -= root_x_offset
+                                display_offset = getattr(motion, "display_offset", None)
+                                if display_offset is not None:
+                                    new_joints_pos -= display_offset
                                 new_motion_kwargs["joints_pos"] = new_joints_pos
                                 break
                         # clear and re-add the selected motion

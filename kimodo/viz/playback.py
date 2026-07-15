@@ -32,11 +32,26 @@ class CharacterMotion:
         joints_pos: torch.Tensor,
         joints_rot: torch.Tensor,
         foot_contacts: Optional[torch.Tensor] = None,
+        display_offset: Optional[torch.Tensor] = None,
     ):
         self.character = character
         self.server = character.server
         self.skeleton = character.skeleton
         self.name = character.name
+
+        # Scene-placement translation added to the canonical motion for display
+        # (e.g. the multi-sample side-by-side spread). joints_pos is expected in
+        # the canonical frame; the stored arrays are display-space. Consumers
+        # that need the canonical motion (exports, sample commit) must subtract
+        # display_offset.
+        if display_offset is None:
+            self.display_offset = torch.zeros(3, dtype=joints_pos.dtype, device=joints_pos.device)
+        else:
+            self.display_offset = (
+                torch.as_tensor(display_offset, dtype=joints_pos.dtype, device=joints_pos.device).reshape(3).clone()
+            )
+            if bool(torch.any(self.display_offset != 0)):
+                joints_pos = joints_pos + self.display_offset
 
         # [T, J, 3] global joint positions
         self.joints_pos = joints_pos

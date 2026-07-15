@@ -204,17 +204,18 @@ def generate(
 
     # Display on characters (callbacks keep this module UI-agnostic).
     clear_motions(client_id)
-    # Keep one sample centered at the origin so constraints align.
+    # Spread samples along x so they don't overlap on screen. The spread is
+    # display-only (recorded as CharacterMotion.display_offset): every sample
+    # is generated, and must be exported, in the canonical constraint frame.
     spread_factor = 1.0  # meters
     center_idx = num_samples // 2
     x_trans = (np.arange(num_samples) - center_idx) * spread_factor
     for i in range(num_samples):
-        cur_joints_pos = joints_pos[i]
-        cur_joints_pos[..., 0] += x_trans[i]
         add_character_motion(
             client,
             session.skeleton,
-            cur_joints_pos,
+            joints_pos[i],
             joints_rot[i],
             foot_contacts[i],
+            display_offset=(float(x_trans[i]), 0.0, 0.0),
         )

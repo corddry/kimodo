@@ -425,6 +425,7 @@ class Demo:
         joints_pos: Optional[torch.Tensor] = None,
         joints_rot: Optional[torch.Tensor] = None,
         foot_contacts: Optional[torch.Tensor] = None,
+        display_offset: Optional[tuple[float, float, float]] = None,
     ) -> None:
         client_id = client.client_id
         if not self.client_active(client_id):
@@ -468,7 +469,7 @@ class Demo:
         if joints_rot is None:
             joints_rot = init_joints_rot[None].repeat(session.max_frame_idx + 1, 1, 1, 1)
 
-        new_motion = CharacterMotion(new_character, joints_pos, joints_rot, foot_contacts)
+        new_motion = CharacterMotion(new_character, joints_pos, joints_rot, foot_contacts, display_offset=display_offset)
         # save the motion in our dict
         session.motions[character_name] = new_motion
 
