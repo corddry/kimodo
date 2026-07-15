@@ -636,6 +636,11 @@ class Demo:
 
         return agent_api.load_session_constraints(self, client_id=client_id, **kwargs)
 
+    def agent_clear_constraints(self, client_id: int | None = None, **kwargs):
+        from . import agent_api
+
+        return agent_api.clear_session_constraints(self, client_id=client_id, **kwargs)
+
     def agent_set_frame(self, client_id: int | None = None, **kwargs):
         from . import agent_api
 
